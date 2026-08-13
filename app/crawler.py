@@ -13,7 +13,7 @@ class Crawler:
     """
     Main Crawler engine executing source data ingestion, model validation, MongoDB storage, and structured logging.
     """
-    de __init__(self, run_id: str, simulated_error: Optional[str] = None): #error here
+    def __init__(self, run_id: str, simulated_error: Optional[str] = None):
         self.run_id = run_id
         self.simulated_error = simulated_error or settings.SIMULATED_ERROR
         self.logger = setup_logger(run_id=self.run_id)

@@ -111,7 +111,7 @@ class Crawler:
         Validates raw payload data with Pydantic and formats into MongoDB documents.
         """
         if self.simulated_error == "crawler_process_error":
-            raise RuntimeError("Simulated unexpected crawler process failure during record transformation")
+            raise RuntimeError("Simulated test crawler process error")
 
         sample_records = raw_data[:sample_size]
         validated_documents = []

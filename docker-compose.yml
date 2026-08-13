@@ -1,0 +1,95 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - aiops_network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - aiops_network
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.12.0
+    container_name: logstash
+    volumes:
+      - ./logstash/pipeline/crawler.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ./logs:/usr/share/logstash/logs
+    depends_on:
+      - elasticsearch
+    networks:
+      - aiops_network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - aiops_network
+
+  crawler:
+    build: .
+    container_name: simple_crawler
+    environment:
+      - CRAWLER_ID=crawler-001
+      - CRAWLER_NAME=simple-crawler
+      - SOURCE_URL=https://jsonplaceholder.typicode.com/posts
+      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_DATABASE=aiops_demo
+      - MONGODB_COLLECTION=crawler_results
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=demo
+      - LOG_FILE_PATH=/app/logs/crawler.log
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - mongodb
+    networks:
+      - aiops_network
+
+  aiops-controller:
+    build: ./aiops-controller
+    container_name: aiops_controller
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ELASTICSEARCH_CRAWLER_INDEX=scrm-aiops-crawler-*
+      - ELASTICSEARCH_CONTROLLER_INDEX=scrm-aiops-controller
+      - MONGODB_URI=mongodb://mongodb:27017
+      - NVIDIA_API_KEY=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
+      - NVIDIA_MODEL=meta/llama-3.1-405b-instruct
+      - NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
+      - AIOPS_DEMO_MODE=false
+      - POLL_INTERVAL_SECONDS=5
+      - LOG_LEVEL=INFO
+    depends_on:
+      - elasticsearch
+      - mongodb
+    networks:
+      - aiops_network
+
+networks:
+  aiops_network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+  es_data:

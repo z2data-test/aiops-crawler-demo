@@ -110,35 +110,51 @@ class Crawler:
         """
         Validates raw payload data with Pydantic and formats into MongoDB documents.
         """
-        if self.simulated_error == "crawler_process_error":
-            raise RuntimeError("Simulated unexpected crawler process failure during record transformation")
+        try:
+            if self.simulated_error == "crawler_process_error":
+                raise RuntimeError("Simulated unexpected crawler process failure during record transformation")
 
-        sample_records = raw_data[:sample_size]
-        validated_documents = []
+            sample_records = raw_data[:sample_size]
+            validated_documents = []
 
-        for item in sample_records:
-            # Validate structure
-            validated_post = PostRecord(**item)
-            # Create MongoDB document representation
-            doc = CrawlerMongoDocument(
-                crawler_id=settings.CRAWLER_ID,
+            for item in sample_records:
+                # Validate structure
+                validated_post = PostRecord(**item)
+                # Create MongoDB document representation
+                doc = CrawlerMongoDocument(
+                    crawler_id=settings.CRAWLER_ID,
+                    run_id=self.run_id,
+                    source=settings.SOURCE_URL,
+                    data=validated_post.model_dump()
+                )
+                validated_documents.append(doc.model_dump())
+
+            log_event(
+                logger=self.logger,
+                level=logging.INFO,
+                action="records_received",
+                outcome="success",
+                message=f"Successfully parsed and validated {len(validated_documents)} records",
                 run_id=self.run_id,
-                source=settings.SOURCE_URL,
-                data=validated_post.model_dump()
+                crawler_status="running",
+                records_count=len(validated_documents)
             )
-            validated_documents.append(doc.model_dump())
-
-        log_event(
-            logger=self.logger,
-            level=logging.INFO,
-            action="records_received",
-            outcome="success",
-            message=f"Successfully parsed and validated {len(validated_documents)} records",
-            run_id=self.run_id,
-            crawler_status="running",
-            records_count=len(validated_documents)
-        )
-        return validated_documents
+            return validated_documents
+        except Exception as e:
+            is_simulated = self.simulated_error == "crawler_process_error"
+            log_event(
+                logger=self.logger,
+                level=logging.ERROR,
+                action="records_transform_failed",
+                outcome="failure",
+                message=f"Failed during record transformation: {str(e)}",
+                run_id=self.run_id,
+                crawler_status="failed",
+                error_category="crawler_process_error",
+                error_message=str(e),
+                error_simulated=is_simulated
+            )
+            raise e
 
     def run(self) -> bool:
         """

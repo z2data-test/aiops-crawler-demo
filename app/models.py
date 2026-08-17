@@ -3,7 +3,7 @@ from typing import Any, Dict
 from pydantic import BaseModel, Field
 
 
-class PostRecord(BaseModel):
+class PostRecord(Base Model):
     """
     Validation model for external HTTP endpoint payload item (JSONPlaceholder /posts).
     """

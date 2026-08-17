@@ -9,6 +9,7 @@ from app.models import CrawlerMongoDocument, PostRecord
 from app.mongodb import MongoDBHandler
 
 
+# Crawler engine definition
 class Crawler:
     """
     Main Crawler engine executing source data ingestion, model validation, MongoDB storage, and structured logging.
